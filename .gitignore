@@ -1,0 +1,44 @@
+# Build outputs
+bin/
+obj/
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rider / JetBrains
+.idea/
+*.iml
+riderModule.iml
+_ReSharper.Caches/
+*.DotSettings.user
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# User secrets (never commit these)
+**/secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test results
+TestResults/
+coverage/
+*.trx
+*.coveragexml

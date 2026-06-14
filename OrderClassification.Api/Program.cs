@@ -93,10 +93,11 @@ orders.MapPost("", [Authorize(Policy = "OrdersWriter")] async (CreateOrderReques
 .WithName("CreateOrder")
 .WithSummary("Create a new order");
 
-orders.MapPatch("/classify", async (ClassifyOrderRequest request, ClassifyOrderHandler handler, CancellationToken ct) =>
+orders.MapPatch("/classify", [Authorize(Policy = "OrdersWriter")] async (ClassifyOrderRequest request, ClassifyOrderHandler handler, HttpContext context, CancellationToken ct) =>
 {
-    var command = new ClassifyOrderCommand(request.Id, request.Classification);
-    await handler.HandleAsync(command, ct);
+    var correlationId = context.Items[RequestCorrelationMiddleware.ItemKey]?.ToString() ?? "unknown";
+    var command = new ClassifyOrderCommand(request.Id, request.Classification, request.IdempotencyKey ?? "");
+    await handler.HandleAsync(command, correlationId, ct);
     return Results.Ok($"Order {request.Id} Classified");
 })
 .WithName("ClassifyOrder")

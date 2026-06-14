@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OrderClassification.Application.Orders.Commands;
 using OrderClassification.Application.Orders.Queries;
+using OrderClassification.Application.Services;
 
 namespace OrderClassification.Application;
 
@@ -18,6 +19,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<CreateOrderHandler>();
         services.AddScoped<GetOrderHandler>();
         services.AddScoped<ClassifyOrderHandler>();
+        services.AddScoped<DomainEventPublisher>();
 
         return services;
     }

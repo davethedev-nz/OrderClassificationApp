@@ -10,4 +10,7 @@ public sealed record ClassifyOrderRequest
     [Required]
     [StringLength(64, MinimumLength = 3)]
     public string Classification { get; init; } = string.Empty;
+    
+    [StringLength(256)]
+    public string? IdempotencyKey { get; init; }
 }

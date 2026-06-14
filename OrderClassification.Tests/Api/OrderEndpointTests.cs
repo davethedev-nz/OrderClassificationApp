@@ -1,8 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using OrderClassification.Application.Messaging;
+using OrderClassification.Domain.Orders;
+using OrderClassification.Infrastructure.Messaging;
+using OrderClassification.Infrastructure.Persistence;
 using OrderClassification.Tests.TestInfrastructure;
 
 namespace OrderClassification.Tests.Api;
@@ -99,12 +104,92 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Patch_ClassifyOrder_WithoutToken_ReturnsUnauthorized()
+    {
+        var response = await _client.PatchAsJsonAsync("/orders/classify", new
+        {
+            Id = Guid.NewGuid(),
+            Classification = "High-Value",
+            IdempotencyKey = "anon-request"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Patch_ClassifyOrder_PublishesIntegrationEvent_AndBuildsReadModel()
+    {
+        InMemoryEventPublisher.ClearPublishedEvents();
+        await AuthenticateAsync();
+
+        var createResponse = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = "DAY5-001" });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<CreatedOrderResponse>();
+        Assert.NotNull(created);
+
+        const string idempotencyKey = "classify-day5-001";
+        var classifyResponse = await _client.PatchAsJsonAsync("/orders/classify", new
+        {
+            Id = created.Id,
+            Classification = "High-Value",
+            IdempotencyKey = idempotencyKey
+        });
+
+        Assert.Equal(HttpStatusCode.OK, classifyResponse.StatusCode);
+        Assert.True(classifyResponse.Headers.Contains("X-Correlation-ID"));
+
+        var publishedEvents = InMemoryEventPublisher.GetPublishedEvents<OrderClassificationIntegrationEvent>();
+        var integrationEvent = Assert.Single(publishedEvents);
+        Assert.Equal(created.Id, integrationEvent.OrderId);
+        Assert.Equal("High-Value", integrationEvent.Classification);
+        Assert.Equal(idempotencyKey, integrationEvent.IdempotencyKey);
+        Assert.False(string.IsNullOrWhiteSpace(integrationEvent.CorrelationId));
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+        var readModel = await dbContext.ClassificationReadModels.SingleAsync(x => x.OrderId == created.Id);
+
+        Assert.Equal("High-Value", readModel.Classification);
+        Assert.Equal(idempotencyKey, readModel.IdempotencyKey);
+    }
+
+    [Fact]
+    public async Task IntegrationEventPublisher_DuplicateEvent_ProcessesReadModelOnlyOnce()
+    {
+        InMemoryEventPublisher.ClearPublishedEvents();
+
+        var integrationEvent = new OrderClassificationIntegrationEvent(
+            OrderId: Guid.NewGuid(),
+            Classification: "Duplicate-Test",
+            CorrelationId: "corr-duplicate",
+            EventId: Guid.NewGuid(),
+            PublishedAt: DateTime.UtcNow,
+            IdempotencyKey: "dup-key-001");
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var publisher = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+            await publisher.PublishAsync(integrationEvent);
+            await publisher.PublishAsync(integrationEvent);
+        }
+
+        using var assertionScope = factory.Services.CreateScope();
+        var dbContext = assertionScope.ServiceProvider.GetRequiredService<OrderDbContext>();
+        var processedRows = await dbContext.ClassificationReadModels
+            .Where(x => x.IdempotencyKey == integrationEvent.IdempotencyKey)
+            .ToListAsync();
+
+        Assert.Single(processedRows);
+    }
+
     private async Task AuthenticateAsync()
     {
         var tokenResponse = await _client.GetFromJsonAsync<DeveloperTokenResponse>("/dev/token");
         Assert.NotNull(tokenResponse);
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse!.Token);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse.Token);
     }
 
     private sealed record CreatedOrderResponse(Guid Id);

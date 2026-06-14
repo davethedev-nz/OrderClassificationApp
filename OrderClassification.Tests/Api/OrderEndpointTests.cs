@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc;
 using OrderClassification.Tests.TestInfrastructure;
@@ -40,6 +41,7 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
     {
         // Arrange
         var command = new { ReferenceNumber = "INT-TEST-001" };
+        await AuthenticateAsync();
 
         // Act - create
         var createResponse = await _client.PostAsJsonAsync("/orders", command);
@@ -64,6 +66,8 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
     [Fact]
     public async Task Post_Order_WithInvalidPayload_ReturnsValidationProblem()
     {
+        await AuthenticateAsync();
+
         var response = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -78,6 +82,7 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
     public async Task Post_Order_WithDuplicateReference_ReturnsConflict()
     {
         var command = new { ReferenceNumber = "DUP-001" };
+        await AuthenticateAsync();
 
         var first = await _client.PostAsJsonAsync("/orders", command);
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
@@ -86,6 +91,24 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
+    [Fact]
+    public async Task Post_Order_WithoutToken_ReturnsUnauthorized()
+    {
+        var response = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = "NOAUTH-001" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        var tokenResponse = await _client.GetFromJsonAsync<DeveloperTokenResponse>("/dev/token");
+        Assert.NotNull(tokenResponse);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse!.Token);
+    }
+
     private sealed record CreatedOrderResponse(Guid Id);
+
+    private sealed record DeveloperTokenResponse(string Token);
 }
 

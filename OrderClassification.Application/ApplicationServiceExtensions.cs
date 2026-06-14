@@ -17,6 +17,7 @@ public static class ApplicationServiceExtensions
     {
         services.AddScoped<CreateOrderHandler>();
         services.AddScoped<GetOrderHandler>();
+        services.AddScoped<ClassifyOrderHandler>();
 
         return services;
     }

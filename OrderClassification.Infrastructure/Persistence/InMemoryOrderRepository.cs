@@ -30,5 +30,11 @@ public sealed class InMemoryOrderRepository : IOrderRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         Task.CompletedTask; // no-op until EF Core is wired
+    
+    public Task UpdateAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        _store[order.Id] = order;
+        return Task.CompletedTask;
+    }
 }
 

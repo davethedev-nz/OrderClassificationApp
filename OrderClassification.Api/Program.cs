@@ -1,4 +1,5 @@
 using OrderClassification.Api.Contracts;
+using OrderClassification.Api.Auth;
 using OrderClassification.Api.Exceptions;
 using OrderClassification.Api.Middleware;
 using OrderClassification.Api.Validation;
@@ -8,6 +9,7 @@ using OrderClassification.Application.Orders.Queries;
 using OrderClassification.Infrastructure;
 using OrderClassification.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddAuthServices(builder.Configuration);
 
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -42,6 +45,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseMiddleware<RequestCorrelationMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 
 var httpsPort = app.Configuration["ASPNETCORE_HTTPS_PORT"];
 if (!string.IsNullOrWhiteSpace(httpsPort))
@@ -53,6 +58,7 @@ if (!string.IsNullOrWhiteSpace(httpsPort))
 // Endpoint Mapping
 // ---------------------------------------------------------------
 app.MapHealthChecks("/health");
+app.MapDeveloperTokenEndpoint();
 
 app.MapGet("/", () => Results.Ok(new { service = "OrderClassification.Api", status = "running" }))
     .WithName("Root")
@@ -78,7 +84,7 @@ orders.MapGet("/{id:guid}", async (Guid id, GetOrderHandler handler, Cancellatio
 .WithName("GetOrderById")
 .WithSummary("Get a single order by ID");
 
-orders.MapPost("", async (CreateOrderRequest request, CreateOrderHandler handler, CancellationToken ct) =>
+orders.MapPost("", [Authorize(Policy = "OrdersWriter")] async (CreateOrderRequest request, CreateOrderHandler handler, CancellationToken ct) =>
 {
     var command = new CreateOrderCommand(request.ReferenceNumber);
     var id = await handler.HandleAsync(command, ct);
@@ -86,6 +92,15 @@ orders.MapPost("", async (CreateOrderRequest request, CreateOrderHandler handler
 })
 .WithName("CreateOrder")
 .WithSummary("Create a new order");
+
+orders.MapPatch("/classify", async (ClassifyOrderRequest request, ClassifyOrderHandler handler, CancellationToken ct) =>
+{
+    var command = new ClassifyOrderCommand(request.Id, request.Classification);
+    await handler.HandleAsync(command, ct);
+    return Results.Ok($"Order {request.Id} Classified");
+})
+.WithName("ClassifyOrder")
+.WithSummary("Classify an order with a given classification");
 
 app.Run();
 

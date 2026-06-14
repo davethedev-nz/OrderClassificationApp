@@ -1,5 +1,3 @@
-using OrderClassification.Domain.Orders;
-
 namespace OrderClassification.Domain.Orders;
 
 /// <summary>
@@ -18,5 +16,6 @@ public interface IOrderRepository
     Task<IReadOnlyList<Order>> GetAllAsync(CancellationToken cancellationToken = default);
     Task AddAsync(Order order, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task UpdateAsync(Order order, CancellationToken cancellationToken = default);
 }
 

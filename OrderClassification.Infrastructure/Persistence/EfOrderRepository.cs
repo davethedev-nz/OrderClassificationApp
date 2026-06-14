@@ -27,5 +27,11 @@ public sealed class EfOrderRepository(OrderDbContext dbContext) : IOrderReposito
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         dbContext.SaveChangesAsync(cancellationToken);
+
+    public Task UpdateAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        dbContext.Update(order);
+        return Task.CompletedTask;
+    }
 }
 

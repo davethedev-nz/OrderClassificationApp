@@ -29,5 +29,6 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : D
             builder.Property(x => x.ClassifiedAt);
         });
     }
+
 }
 

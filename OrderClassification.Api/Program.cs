@@ -1,7 +1,11 @@
+using OrderClassification.Api.Contracts;
+using OrderClassification.Api.Exceptions;
+using OrderClassification.Api.Middleware;
+using OrderClassification.Api.Validation;
 using OrderClassification.Application;
-using OrderClassification.Infrastructure;
 using OrderClassification.Application.Orders.Commands;
 using OrderClassification.Application.Orders.Queries;
+using OrderClassification.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -26,7 +32,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseExceptionHandler();
+app.UseMiddleware<RequestCorrelationMiddleware>();
+
+var httpsPort = app.Configuration["ASPNETCORE_HTTPS_PORT"];
+if (!string.IsNullOrWhiteSpace(httpsPort))
+{
+    app.UseHttpsRedirection();
+}
 
 // ---------------------------------------------------------------
 // Endpoint Mapping
@@ -37,8 +50,11 @@ app.MapGet("/", () => Results.Ok(new { service = "OrderClassification.Api", stat
     .WithName("Root")
     .WithSummary("Service liveness ping");
 
+var orders = app.MapGroup("/orders")
+    .AddEndpointFilter(new DataAnnotationsValidationFilter());
+
 // Orders endpoints
-app.MapGet("/orders", async (GetOrderHandler handler, CancellationToken ct) =>
+orders.MapGet("", async (GetOrderHandler handler, CancellationToken ct) =>
 {
     var orders = await handler.HandleAllAsync(ct);
     return Results.Ok(orders);
@@ -46,7 +62,7 @@ app.MapGet("/orders", async (GetOrderHandler handler, CancellationToken ct) =>
 .WithName("GetOrders")
 .WithSummary("List all orders");
 
-app.MapGet("/orders/{id:guid}", async (Guid id, GetOrderHandler handler, CancellationToken ct) =>
+orders.MapGet("/{id:guid}", async (Guid id, GetOrderHandler handler, CancellationToken ct) =>
 {
     var order = await handler.HandleAsync(id, ct);
     return order is null ? Results.NotFound() : Results.Ok(order);
@@ -54,8 +70,9 @@ app.MapGet("/orders/{id:guid}", async (Guid id, GetOrderHandler handler, Cancell
 .WithName("GetOrderById")
 .WithSummary("Get a single order by ID");
 
-app.MapPost("/orders", async (CreateOrderCommand command, CreateOrderHandler handler, CancellationToken ct) =>
+orders.MapPost("", async (CreateOrderRequest request, CreateOrderHandler handler, CancellationToken ct) =>
 {
+    var command = new CreateOrderCommand(request.ReferenceNumber);
     var id = await handler.HandleAsync(command, ct);
     return Results.Created($"/orders/{id}", new { id });
 })

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OrderClassification.Tests.Api;
 
@@ -23,6 +24,7 @@ public class OrderEndpointTests(WebApplicationFactory<Program> factory)
     {
         var response = await _client.GetAsync("/");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.Contains("X-Correlation-ID"));
     }
 
     [Fact]
@@ -41,12 +43,13 @@ public class OrderEndpointTests(WebApplicationFactory<Program> factory)
         // Act - create
         var createResponse = await _client.PostAsJsonAsync("/orders", command);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        Assert.True(createResponse.Headers.Contains("X-Correlation-ID"));
 
         var created = await createResponse.Content.ReadFromJsonAsync<CreatedOrderResponse>();
         Assert.NotNull(created);
 
         // Act - retrieve
-        var getResponse = await _client.GetAsync($"/orders/{created!.id}");
+        var getResponse = await _client.GetAsync($"/orders/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
@@ -57,6 +60,19 @@ public class OrderEndpointTests(WebApplicationFactory<Program> factory)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private sealed record CreatedOrderResponse(Guid id);
+    [Fact]
+    public async Task Post_Order_WithInvalidPayload_ReturnsValidationProblem()
+    {
+        var response = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = "" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal((int)HttpStatusCode.BadRequest, problem!.Status);
+        Assert.Contains("ReferenceNumber", problem.Errors.Keys);
+    }
+
+    private sealed record CreatedOrderResponse(Guid Id);
 }
 

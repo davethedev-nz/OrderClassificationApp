@@ -6,6 +6,8 @@ using OrderClassification.Application;
 using OrderClassification.Application.Orders.Commands;
 using OrderClassification.Application.Orders.Queries;
 using OrderClassification.Infrastructure;
+using OrderClassification.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,12 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+    dbContext.Database.Migrate();
+}
 
 // ---------------------------------------------------------------
 // Middleware Pipeline

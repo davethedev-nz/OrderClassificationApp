@@ -1,4 +1,6 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using OrderClassification.Api.Middleware;
 
@@ -23,6 +25,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         {
             ArgumentException => (StatusCodes.Status400BadRequest, "Validation or argument error"),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Invalid operation"),
+            DbUpdateException dbUpdateException when dbUpdateException.InnerException is SqliteException sqliteException && sqliteException.SqliteErrorCode == 19
+                => (StatusCodes.Status409Conflict, "Conflict while saving changes"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
         };
 

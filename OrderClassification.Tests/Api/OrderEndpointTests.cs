@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc;
+using OrderClassification.Tests.TestInfrastructure;
 
 namespace OrderClassification.Tests.Api;
 
@@ -14,8 +15,8 @@ namespace OrderClassification.Tests.Api;
 /// WebApplicationFactory uses the `public partial class Program` declaration
 /// in Program.cs as its entry point — that's why we added it.
 /// </summary>
-public class OrderEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class OrderEndpointTests(SqliteWebApplicationFactory factory)
+    : IClassFixture<SqliteWebApplicationFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -69,8 +70,20 @@ public class OrderEndpointTests(WebApplicationFactory<Program> factory)
 
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
-        Assert.Equal((int)HttpStatusCode.BadRequest, problem!.Status);
+        Assert.Equal((int)HttpStatusCode.BadRequest, problem.Status);
         Assert.Contains("ReferenceNumber", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Post_Order_WithDuplicateReference_ReturnsConflict()
+    {
+        var command = new { ReferenceNumber = "DUP-001" };
+
+        var first = await _client.PostAsJsonAsync("/orders", command);
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+
+        var second = await _client.PostAsJsonAsync("/orders", command);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
     private sealed record CreatedOrderResponse(Guid Id);

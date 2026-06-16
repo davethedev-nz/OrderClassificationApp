@@ -86,11 +86,11 @@ Commit message pattern:
 
 ### Day 7 - Azure IaC + CI/CD
 
-- [ ] Add Bicep or Terraform baseline for Azure resources.
-- [ ] Define per-environment config (`dev`/`test`/`prod`) inputs.
-- [ ] Add CI pipeline (build + tests).
-- [ ] Add CD pipeline (infrastructure + app deployment strategy).
-- [ ] Commit: `day7: azure infrastructure and pipelines`
+- [x] Add Bicep or Terraform baseline for Azure resources.
+- [x] Define per-environment config (`dev`/`test`/`prod`) inputs.
+- [x] Add CI pipeline (build + tests).
+- [x] Add CD pipeline (infrastructure + app deployment strategy).
+- [x] Commit: `day7: azure infrastructure and pipelines`
 
 ### Day 8 - Interview packaging and rehearsal
 
@@ -103,9 +103,9 @@ Commit message pattern:
 ## Session Handoff (fill each session)
 
 - Date: 2026-06-16
-- Completed today: Day 6 reliability hardening, Service Bus transport, outbox dispatcher, health/readiness notes, and the Day 6/Day 7 explainer docs.
+- Completed today: Day 6 reliability hardening plus Day 7 Terraform baseline, CI/CD workflows, deployment notes, and interview-ready Day 7 learning material updates.
 - Last commit hash: `2af65a1`
-- Next task (single immediate step): Day 7 Azure IaC baseline.
+- Next task (single immediate step): Day 8 interview packaging (README, diagrams, and 5-minute demo script).
 - Blockers/questions: None.
 
 ## Quick Recovery Commands

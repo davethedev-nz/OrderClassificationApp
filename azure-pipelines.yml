@@ -71,13 +71,22 @@ stages:
               command: publish
               publishWebProjects: false
               projects: OrderClassification.Api/OrderClassification.Api.csproj
-              arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+              arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api/publish
               zipAfterPublish: false
+
+          - task: ArchiveFiles@2
+            displayName: Archive published API
+            inputs:
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/api/publish
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: $(Build.ArtifactStagingDirectory)/api/OrderClassification.Api.zip
+              replaceExistingArchive: true
 
           - task: PublishPipelineArtifact@1
             displayName: Upload API artifact
             inputs:
-              targetPath: $(Build.ArtifactStagingDirectory)/api
+              targetPath: $(Build.ArtifactStagingDirectory)/api/OrderClassification.Api.zip
               artifactName: $(ArtifactName)
 
   - stage: Deploy_Dev
@@ -101,7 +110,7 @@ stages:
                     azureSubscription: $(AzureServiceConnection)
                     appType: webAppLinux
                     appName: $(DevWebAppName)
-                    package: $(Pipeline.Workspace)/$(ArtifactName)
+                    package: $(Pipeline.Workspace)/$(ArtifactName)/**/*.zip
 
   - stage: Deploy_Prod
     displayName: Deploy to prod
@@ -124,7 +133,7 @@ stages:
                     azureSubscription: $(AzureServiceConnection)
                     appType: webAppLinux
                     appName: $(ProdWebAppName)
-                    package: $(Pipeline.Workspace)/$(ArtifactName)
+                    package: $(Pipeline.Workspace)/$(ArtifactName)/**/*.zip
 
 
 

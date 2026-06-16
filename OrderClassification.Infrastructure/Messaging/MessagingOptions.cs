@@ -6,6 +6,7 @@ public sealed class MessagingOptions
 
     public string Provider { get; set; } = Providers.InMemory;
     public ServiceBusOptions ServiceBus { get; set; } = new();
+    public OutboxOptions Outbox { get; set; } = new();
 
     public bool UseServiceBus() => string.Equals(Provider, Providers.ServiceBus, StringComparison.OrdinalIgnoreCase);
 
@@ -23,6 +24,13 @@ public sealed class ServiceBusOptions
     public string SubscriptionName { get; set; } = "classification-read-model";
     public string OrderClassifiedSubject { get; set; } = "orders.classified";
     public int MaxConcurrentCalls { get; set; } = 1;
-    public bool AutoCreateProcessor { get; set; } = true;
 }
+
+public sealed class OutboxOptions
+{
+    public bool Enabled { get; set; } = true;
+    public int DispatchIntervalMilliseconds { get; set; } = 250;
+    public int BatchSize { get; set; } = 25;
+}
+
 

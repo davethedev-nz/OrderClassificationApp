@@ -9,7 +9,8 @@ namespace OrderClassification.Application.Services;
 /// Domain events are internal signals; integration events are the external bus contract.
 /// </summary>
 public sealed class DomainEventPublisher(
-    IIntegrationEventPublisher eventPublisher)
+    IIntegrationEventPublisher eventPublisher,
+    IOutboxWriter outboxWriter)
 {
     public async Task PublishAsync(
         IReadOnlyCollection<IDomainEvent> domainEvents,
@@ -44,6 +45,12 @@ public sealed class DomainEventPublisher(
                 ? $"{domainEvent.OrderId:N}:{domainEvent.Classification}"
                 : idempotencyKey
         );
+
+        await outboxWriter.EnqueueAsync(
+            typeof(OrderClassificationIntegrationEvent).FullName ?? nameof(OrderClassificationIntegrationEvent),
+            System.Text.Json.JsonSerializer.Serialize(integrationEvent),
+            correlationId,
+            cancellationToken);
 
         await eventPublisher.PublishAsync(integrationEvent, cancellationToken);
     }

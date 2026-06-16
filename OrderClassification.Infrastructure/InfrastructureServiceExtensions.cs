@@ -29,6 +29,8 @@ public static class InfrastructureServiceExtensions
         services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
         services.AddDbContext<OrderDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<IOrderRepository, EfOrderRepository>();
+        services.AddScoped<IOutboxWriter, EfOutboxWriter>();
+        services.AddHostedService<OutboxDispatcher>();
         services.AddScoped<IEventHandler<OrderClassificationIntegrationEvent>, OrderClassificationEventHandler>();
 
         // Event publishing and handling

@@ -15,6 +15,8 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : D
 
     public DbSet<ClassificationReadModel> ClassificationReadModels => Set<ClassificationReadModel>();
 
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -41,6 +43,19 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : D
             builder.HasIndex(x => x.IdempotencyKey).IsUnique();
             builder.Property(x => x.PublishedAt).IsRequired();
             builder.Property(x => x.ProcessedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<OutboxMessage>(builder =>
+        {
+            builder.ToTable("OutboxMessages");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.EventType).IsRequired().HasMaxLength(256);
+            builder.Property(x => x.Payload).IsRequired();
+            builder.Property(x => x.CorrelationId).HasMaxLength(128);
+            builder.Property(x => x.Status).IsRequired().HasMaxLength(32);
+            builder.Property(x => x.OccurredAt).IsRequired();
+            builder.Property(x => x.DispatchedAt);
+            builder.Property(x => x.Error).HasMaxLength(1024);
         });
     }
 

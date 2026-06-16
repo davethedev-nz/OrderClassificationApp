@@ -1,0 +1,111 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/dotnet10-cram
+
+pr:
+  branches:
+    include:
+      - main
+      - feature/dotnet10-cram
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  BuildConfiguration: Release
+  DotNetSdkVersion: 10.x
+  ArtifactName: orderclassification-api
+  AzureServiceConnection: sc-orderclassification
+  DevWebAppName: app-ocdev
+  ProdWebAppName: app-ocprod
+
+stages:
+  - stage: Build
+    displayName: Build and test
+    jobs:
+      - job: Build_Test
+        displayName: Build, test, and package
+        steps:
+          - task: UseDotNet@2
+            displayName: Setup .NET SDK
+            inputs:
+              packageType: sdk
+              version: $(DotNetSdkVersion)
+
+          - script: dotnet restore OrderClassification.sln
+            displayName: Restore
+
+          - script: dotnet build OrderClassification.sln --no-restore -c $(BuildConfiguration)
+            displayName: Build
+
+          - script: dotnet test OrderClassification.sln --no-build -c $(BuildConfiguration) --logger "trx;LogFileName=test-results.trx"
+            displayName: Test
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: "**/test-results.trx"
+              mergeTestResults: true
+              failTaskOnFailedTests: true
+              testRunTitle: OrderClassification Tests
+
+          - script: dotnet publish OrderClassification.Api/OrderClassification.Api.csproj -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+            displayName: Publish API artifact
+
+          - task: PublishPipelineArtifact@1
+            displayName: Upload API artifact
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/api
+              artifactName: $(ArtifactName)
+
+  - stage: Deploy_Dev
+    displayName: Deploy to dev
+    dependsOn: Build
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: DeployDev
+        displayName: Deploy artifact to dev
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: $(ArtifactName)
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to Azure Web App (dev)
+                  inputs:
+                    azureSubscription: $(AzureServiceConnection)
+                    appType: webAppLinux
+                    appName: $(DevWebAppName)
+                    package: $(Pipeline.Workspace)/$(ArtifactName)
+
+  - stage: Deploy_Prod
+    displayName: Deploy to prod
+    dependsOn: Deploy_Dev
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployProd
+        displayName: Deploy artifact to prod
+        environment: prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: $(ArtifactName)
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to Azure Web App (prod)
+                  inputs:
+                    azureSubscription: $(AzureServiceConnection)
+                    appType: webAppLinux
+                    appName: $(ProdWebAppName)
+                    package: $(Pipeline.Workspace)/$(ArtifactName)
+
+

@@ -93,9 +93,9 @@ resource "azurerm_linux_web_app" "api" {
 
   app_settings = {
     "ASPNETCORE_ENVIRONMENT"                        = var.environment
-    "ConnectionStrings__OrderClassification"        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.orderclassification_connection_string.id})"
+    "ConnectionStrings__OrderClassification"        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.orderclassification_connection_string.versionless_id})"
     "Messaging__Provider"                           = "ServiceBus"
-    "Messaging__ServiceBus__ConnectionString"       = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.servicebus_connection_string.id})"
+    "Messaging__ServiceBus__ConnectionString"       = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.servicebus_connection_string.versionless_id})"
     "Messaging__ServiceBus__TopicName"              = azurerm_servicebus_topic.orders.name
     "Messaging__ServiceBus__SubscriptionName"       = azurerm_servicebus_subscription.classification_read_model.name
     "Messaging__ServiceBus__OrderClassifiedSubject" = "orders.classified"

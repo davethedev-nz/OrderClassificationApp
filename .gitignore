@@ -46,3 +46,8 @@ coverage/
 # Local explainer docs (study notes — not for source control)
 docs/
 
+# Terraform local working directory and state files
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+

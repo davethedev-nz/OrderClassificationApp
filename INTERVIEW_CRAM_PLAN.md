@@ -78,11 +78,11 @@ Commit message pattern:
 
 ### Day 6 - Reliability and operations
 
-- [ ] Add outbox pattern (or minimum viable outbox simulation) for reliability.
-- [ ] Add background worker (`IHostedService`) for event dispatch if needed.
-- [ ] Add health/readiness checks and basic telemetry wiring.
-- [ ] Document failure-mode behavior (duplicate messages, transient errors).
-- [ ] Commit: `day6: reliability and operational hardening`
+- [x] Add outbox pattern (or minimum viable outbox simulation) for reliability.
+- [x] Add background worker (`IHostedService`) for event dispatch if needed.
+- [x] Add health/readiness checks and basic telemetry wiring.
+- [x] Document failure-mode behavior (duplicate messages, transient errors).
+- [x] Commit: `day6: reliability and operational hardening`
 
 ### Day 7 - Azure IaC + CI/CD
 
@@ -102,11 +102,11 @@ Commit message pattern:
 
 ## Session Handoff (fill each session)
 
-- Date:
-- Completed today:
-- Last commit hash:
-- Next task (single immediate step):
-- Blockers/questions:
+- Date: 2026-06-16
+- Completed today: Day 6 reliability hardening, Service Bus transport, outbox dispatcher, health/readiness notes, and the Day 6/Day 7 explainer docs.
+- Last commit hash: `2af65a1`
+- Next task (single immediate step): Day 7 Azure IaC baseline.
+- Blockers/questions: None.
 
 ## Quick Recovery Commands
 

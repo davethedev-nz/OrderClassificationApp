@@ -28,7 +28,7 @@ resource "azurerm_servicebus_subscription" "classification_read_model" {
 }
 
 resource "azurerm_key_vault" "main" {
-  name                       = "kv-${local.resource_prefix}"
+  name                       = "kv-${local.resource_prefix}1"
   location                   = azurerm_resource_group.main.location
   resource_group_name        = azurerm_resource_group.main.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
@@ -39,6 +39,21 @@ resource "azurerm_key_vault" "main" {
 }
 
 data "azurerm_client_config" "current" {}
+
+resource "azurerm_key_vault_access_policy" "current_user" {
+  key_vault_id = azurerm_key_vault.main.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = data.azurerm_client_config.current.object_id
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+    "Delete",
+    "Recover",
+    "Purge"
+  ]
+}
 
 resource "azurerm_application_insights" "main" {
   name                = "appi-${local.resource_prefix}"
@@ -65,6 +80,10 @@ resource "azurerm_linux_web_app" "api" {
   https_only          = true
   tags                = var.tags
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   site_config {
     always_on = true
     application_stack {
@@ -84,16 +103,29 @@ resource "azurerm_linux_web_app" "api" {
   }
 }
 
+resource "azurerm_key_vault_access_policy" "web_app" {
+  key_vault_id = azurerm_key_vault.main.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = azurerm_linux_web_app.api.identity[0].principal_id
+
+  secret_permissions = [
+    "Get",
+    "List"
+  ]
+}
+
 resource "azurerm_key_vault_secret" "orderclassification_connection_string" {
   name         = "OrderClassification--ConnectionString"
-  value        = "Data Source=TODO-replace-with-azure-sql"
+  value        = "Data Source=/home/site/wwwroot/orderclassification.db"
   key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_key_vault_access_policy.current_user]
 }
 
 resource "azurerm_key_vault_secret" "servicebus_connection_string" {
   name         = "OrderClassification--ServiceBusConnectionString"
   value        = "Endpoint=sb://TODO-replace/;SharedAccessKeyName=TODO;SharedAccessKey=TODO"
   key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_key_vault_access_policy.current_user]
 }
 
 

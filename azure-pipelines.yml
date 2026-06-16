@@ -72,14 +72,13 @@ stages:
               command: publish
               publishWebProjects: false
               projects: OrderClassification.Api/OrderClassification.Api.csproj
-              arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api/publish
-              modifyOutputPath: false
+              arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api/publish/
               zipAfterPublish: false
 
           - task: ArchiveFiles@2
             displayName: Archive published API
             inputs:
-              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/api/publish
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/api/publish/OrderClassification.Api
               includeRootFolder: false
               archiveType: zip
               archiveFile: $(Build.ArtifactStagingDirectory)/api/$(ApiZipName)

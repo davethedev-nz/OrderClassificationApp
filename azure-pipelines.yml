@@ -112,6 +112,7 @@ stages:
                     appType: webAppLinux
                     appName: $(DevWebAppName)
                     package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
+                    deploymentMethod: zipDeploy
 
   - stage: Deploy_Prod
     displayName: Deploy to prod
@@ -135,6 +136,7 @@ stages:
                     appType: webAppLinux
                     appName: $(ProdWebAppName)
                     package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
+                    deploymentMethod: zipDeploy
 
 
 

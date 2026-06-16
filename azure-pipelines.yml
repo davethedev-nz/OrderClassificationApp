@@ -35,14 +35,25 @@ stages:
               packageType: sdk
               version: $(DotNetSdkVersion)
 
-          - script: dotnet restore OrderClassification.sln
+          - task: DotNetCoreCLI@2
             displayName: Restore
+            inputs:
+              command: restore
+              projects: OrderClassification.sln
 
-          - script: dotnet build OrderClassification.sln --no-restore -c $(BuildConfiguration)
+          - task: DotNetCoreCLI@2
             displayName: Build
+            inputs:
+              command: build
+              projects: OrderClassification.sln
+              arguments: --no-restore -c $(BuildConfiguration)
 
-          - script: dotnet test OrderClassification.sln --no-build -c $(BuildConfiguration) --logger "trx;LogFileName=test-results.trx"
+          - task: DotNetCoreCLI@2
             displayName: Test
+            inputs:
+              command: test
+              projects: OrderClassification.sln
+              arguments: --no-build -c $(BuildConfiguration) --logger "trx;LogFileName=test-results.trx"
 
           - task: PublishTestResults@2
             displayName: Publish test results
@@ -54,8 +65,14 @@ stages:
               failTaskOnFailedTests: true
               testRunTitle: OrderClassification Tests
 
-          - script: dotnet publish OrderClassification.Api/OrderClassification.Api.csproj -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+          - task: DotNetCoreCLI@2
             displayName: Publish API artifact
+            inputs:
+              command: publish
+              publishWebProjects: false
+              projects: OrderClassification.Api/OrderClassification.Api.csproj
+              arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+              zipAfterPublish: false
 
           - task: PublishPipelineArtifact@1
             displayName: Upload API artifact

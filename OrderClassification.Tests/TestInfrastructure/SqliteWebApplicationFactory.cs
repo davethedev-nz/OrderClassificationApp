@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderClassification.Infrastructure.Persistence;
 
@@ -20,6 +21,15 @@ public sealed class SqliteWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureAppConfiguration((_, configBuilder) =>
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Messaging:Provider"] = "InMemory",
+                ["Messaging:ServiceBus:ConnectionString"] = string.Empty
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
             RemoveExistingDbContextRegistrations(services);

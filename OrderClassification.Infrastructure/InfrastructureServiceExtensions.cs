@@ -30,7 +30,13 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<OrderDbContext>(options => options.UseSqlite(connectionString));
         services.AddScoped<IOrderRepository, EfOrderRepository>();
         services.AddScoped<IOutboxWriter, EfOutboxWriter>();
-        services.AddHostedService<OutboxDispatcher>();
+        
+        // Only register outbox dispatcher if enabled in configuration
+        if (messagingOptions.Outbox.Enabled)
+        {
+            services.AddHostedService<OutboxDispatcher>();
+        }
+        
         services.AddScoped<IEventHandler<OrderClassificationIntegrationEvent>, OrderClassificationEventHandler>();
 
         // Event publishing and handling

@@ -14,7 +14,7 @@ pool:
   name: $(AgentPoolName)
 
 variables:
-  AgentPoolName: Default
+  AgentPoolName: "Daves Pool"
   BuildConfiguration: Release
   DotNetSdkVersion: 10.x
   ArtifactName: orderclassification-api

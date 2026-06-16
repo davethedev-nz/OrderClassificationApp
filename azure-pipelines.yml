@@ -18,6 +18,7 @@ variables:
   BuildConfiguration: Release
   DotNetSdkVersion: 10.x
   ArtifactName: orderclassification-api
+  ApiZipName: OrderClassification.Api.zip
   AzureServiceConnection: sc-orderclassification
   DevWebAppName: app-ocdev
   ProdWebAppName: app-ocprod
@@ -80,13 +81,13 @@ stages:
               rootFolderOrFile: $(Build.ArtifactStagingDirectory)/api/publish
               includeRootFolder: false
               archiveType: zip
-              archiveFile: $(Build.ArtifactStagingDirectory)/api/OrderClassification.Api.zip
+              archiveFile: $(Build.ArtifactStagingDirectory)/api/$(ApiZipName)
               replaceExistingArchive: true
 
           - task: PublishPipelineArtifact@1
             displayName: Upload API artifact
             inputs:
-              targetPath: $(Build.ArtifactStagingDirectory)/api/OrderClassification.Api.zip
+              targetPath: $(Build.ArtifactStagingDirectory)/api/$(ApiZipName)
               artifactName: $(ArtifactName)
 
   - stage: Deploy_Dev
@@ -110,7 +111,7 @@ stages:
                     azureSubscription: $(AzureServiceConnection)
                     appType: webAppLinux
                     appName: $(DevWebAppName)
-                    package: $(Pipeline.Workspace)/$(ArtifactName)/**/*.zip
+                    package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
 
   - stage: Deploy_Prod
     displayName: Deploy to prod
@@ -133,7 +134,7 @@ stages:
                     azureSubscription: $(AzureServiceConnection)
                     appType: webAppLinux
                     appName: $(ProdWebAppName)
-                    package: $(Pipeline.Workspace)/$(ArtifactName)/**/*.zip
+                    package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
 
 
 

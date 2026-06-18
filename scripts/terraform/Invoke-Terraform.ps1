@@ -49,10 +49,21 @@ function Install-Terraform {
 }
 
 function Set-TerraformAuthEnv {
+    if (-not $env:servicePrincipalId -or -not $env:servicePrincipalKey -or -not $env:tenantId) {
+        throw 'Service principal environment variables are missing. Ensure AzureCLI@2 uses addSpnToEnvironment: true and the service connection is authorized.'
+    }
+
+    # Show only presence flags for diagnostics; never print credential values.
+    Write-Host "SP ID present: $([bool]$env:servicePrincipalId)"
+    Write-Host "SP Key present: $([bool]$env:servicePrincipalKey)"
+    Write-Host "Tenant present: $([bool]$env:tenantId)"
+
     $env:ARM_CLIENT_ID = $env:servicePrincipalId
     $env:ARM_CLIENT_SECRET = $env:servicePrincipalKey
     $env:ARM_TENANT_ID = $env:tenantId
     $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+    $env:ARM_USE_CLI = 'false'
+    $env:ARM_USE_AZUREAD = 'true'
 }
 
 function Invoke-TerraformInit {

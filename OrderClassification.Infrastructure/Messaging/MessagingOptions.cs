@@ -4,7 +4,7 @@ public sealed class MessagingOptions
 {
     public const string SectionName = "Messaging";
 
-    public string Provider { get; set; } = Providers.InMemory;
+    public string Provider { get; set; } = Providers.ServiceBus;
     public ServiceBusOptions ServiceBus { get; set; } = new();
     public OutboxOptions Outbox { get; set; } = new();
 

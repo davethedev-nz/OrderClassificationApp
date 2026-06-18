@@ -125,7 +125,7 @@ resource "azurerm_key_vault_access_policy" "web_app" {
 
 resource "azurerm_key_vault_secret" "orderclassification_connection_string" {
   name         = "OrderClassification--ConnectionString"
-  value        = "Data Source=dave was here"
+  value        = "Data Source=/home/site/orderclassification.db"
   key_vault_id = azurerm_key_vault.main.id
   depends_on   = [azurerm_key_vault_access_policy.current_user]
 }

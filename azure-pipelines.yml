@@ -1,18 +1,15 @@
-trigger:
+﻿trigger:
   branches:
     include:
       - main
       - develop
-
 pr:
   branches:
     include:
       - main
       - develop
-
 pool:
   name: $(AgentPoolName)
-
 variables:
   AgentPoolName: "Daves Pool"
   BuildConfiguration: Release
@@ -22,7 +19,9 @@ variables:
   AzureServiceConnection: sc-orderclassification
   DevWebAppName: app-ocdev
   ProdWebAppName: app-ocprod
-
+  TerraformVersion: 1.9.0
+  TerraformArtifact: terraform-plans
+  TerraformWorkingDir: $(Build.SourcesDirectory)/infra/terraform
 stages:
   - stage: Build
     displayName: Build and test
@@ -35,27 +34,23 @@ stages:
             inputs:
               packageType: sdk
               version: $(DotNetSdkVersion)
-
           - task: DotNetCoreCLI@2
             displayName: Restore
             inputs:
               command: restore
               projects: OrderClassification.sln
-
           - task: DotNetCoreCLI@2
             displayName: Build
             inputs:
               command: build
               projects: OrderClassification.sln
               arguments: --no-restore -c $(BuildConfiguration)
-
           - task: DotNetCoreCLI@2
             displayName: Test
             inputs:
               command: test
               projects: OrderClassification.sln
               arguments: --no-build -c $(BuildConfiguration) --logger "trx;LogFileName=test-results.trx"
-
           - task: PublishTestResults@2
             displayName: Publish test results
             condition: succeededOrFailed()
@@ -65,7 +60,6 @@ stages:
               mergeTestResults: true
               failTaskOnFailedTests: true
               testRunTitle: OrderClassification Tests
-
           - task: DotNetCoreCLI@2
             displayName: Publish API artifact
             inputs:
@@ -74,7 +68,6 @@ stages:
               projects: OrderClassification.Api/OrderClassification.Api.csproj
               arguments: -c $(BuildConfiguration) -o $(Build.ArtifactStagingDirectory)/api/publish/
               zipAfterPublish: false
-
           - task: ArchiveFiles@2
             displayName: Archive published API
             inputs:
@@ -83,20 +76,103 @@ stages:
               archiveType: zip
               archiveFile: $(Build.ArtifactStagingDirectory)/api/$(ApiZipName)
               replaceExistingArchive: true
-
           - task: PublishPipelineArtifact@1
             displayName: Upload API artifact
             inputs:
               targetPath: $(Build.ArtifactStagingDirectory)/api/$(ApiZipName)
               artifactName: $(ArtifactName)
-
+  - stage: Terraform_Plan
+    displayName: Terraform plan and validate
+    dependsOn: Build
+    jobs:
+      - job: Terraform_Validate_Plan
+        displayName: Terraform validate and plan
+        steps:
+          - task: TerraformInstaller@0
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: $(TerraformVersion)
+          - task: TerraformTaskV4@4
+            displayName: Terraform init
+            inputs:
+              provider: azurerm
+              command: init
+              workingDirectory: $(TerraformWorkingDir)
+              backendServiceArm: $(AzureServiceConnection)
+              backendAzureRmResourceGroupName: rg-terraform
+              backendAzureRmStorageAccountName: terraform
+              backendAzureRmContainerName: tfstate
+              backendAzureRmKey: orderclassification.tfstate
+          - task: TerraformTaskV4@4
+            displayName: Terraform validate
+            inputs:
+              provider: azurerm
+              command: validate
+              workingDirectory: $(TerraformWorkingDir)
+          - task: TerraformTaskV4@4
+            displayName: Terraform plan (dev)
+            inputs:
+              provider: azurerm
+              command: plan
+              workingDirectory: $(TerraformWorkingDir)
+              commandOptions: -var="environment=dev" -out=$(Build.ArtifactStagingDirectory)/tfplan-dev
+              environmentServiceNameAzureRM: $(AzureServiceConnection)
+          - task: TerraformTaskV4@4
+            displayName: Terraform plan (prod)
+            inputs:
+              provider: azurerm
+              command: plan
+              workingDirectory: $(TerraformWorkingDir)
+              commandOptions: -var="environment=prod" -out=$(Build.ArtifactStagingDirectory)/tfplan-prod
+              environmentServiceNameAzureRM: $(AzureServiceConnection)
+          - task: PublishPipelineArtifact@1
+            displayName: Upload Terraform plans
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)
+              artifactName: $(TerraformArtifact)
+              publishLocation: pipeline
   - stage: Deploy_Dev
     displayName: Deploy to dev
-    dependsOn: Build
+    dependsOn:
+      - Build
+      - Terraform_Plan
     condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
     jobs:
-      - deployment: DeployDev
-        displayName: Deploy artifact to dev
+      - deployment: DeployInfraDev
+        displayName: Deploy infrastructure to dev
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: $(TerraformArtifact)
+                - task: TerraformInstaller@0
+                  displayName: Install Terraform
+                  inputs:
+                    terraformVersion: $(TerraformVersion)
+                - task: TerraformTaskV4@4
+                  displayName: Terraform init
+                  inputs:
+                    provider: azurerm
+                    command: init
+                    workingDirectory: $(TerraformWorkingDir)
+                    backendServiceArm: $(AzureServiceConnection)
+                    backendAzureRmResourceGroupName: rg-terraform
+                    backendAzureRmStorageAccountName: terraform
+                    backendAzureRmContainerName: tfstate
+                    backendAzureRmKey: orderclassification.tfstate
+                - task: TerraformTaskV4@4
+                  displayName: Terraform apply (dev)
+                  inputs:
+                    provider: azurerm
+                    command: apply
+                    workingDirectory: $(TerraformWorkingDir)
+                    commandOptions: $(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-dev
+                    environmentServiceNameAzureRM: $(AzureServiceConnection)
+      - deployment: DeployAppDev
+        displayName: Deploy application to dev
+        dependsOn: DeployInfraDev
         environment: dev
         strategy:
           runOnce:
@@ -104,7 +180,6 @@ stages:
               steps:
                 - download: current
                   artifact: $(ArtifactName)
-
                 - task: AzureWebApp@1
                   displayName: Deploy to Azure Web App (dev)
                   inputs:
@@ -113,14 +188,48 @@ stages:
                     appName: $(DevWebAppName)
                     package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
                     deploymentMethod: zipDeploy
-
   - stage: Deploy_Prod
     displayName: Deploy to prod
-    dependsOn: Deploy_Dev
+    dependsOn:
+      - Deploy_Dev
+      - Terraform_Plan
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
-      - deployment: DeployProd
-        displayName: Deploy artifact to prod
+      - deployment: DeployInfraProd
+        displayName: Deploy infrastructure to prod
+        environment: prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: $(TerraformArtifact)
+                - task: TerraformInstaller@0
+                  displayName: Install Terraform
+                  inputs:
+                    terraformVersion: $(TerraformVersion)
+                - task: TerraformTaskV4@4
+                  displayName: Terraform init
+                  inputs:
+                    provider: azurerm
+                    command: init
+                    workingDirectory: $(TerraformWorkingDir)
+                    backendServiceArm: $(AzureServiceConnection)
+                    backendAzureRmResourceGroupName: rg-terraform
+                    backendAzureRmStorageAccountName: terraform
+                    backendAzureRmContainerName: tfstate
+                    backendAzureRmKey: orderclassification.tfstate
+                - task: TerraformTaskV4@4
+                  displayName: Terraform apply (prod)
+                  inputs:
+                    provider: azurerm
+                    command: apply
+                    workingDirectory: $(TerraformWorkingDir)
+                    commandOptions: $(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-prod
+                    environmentServiceNameAzureRM: $(AzureServiceConnection)
+      - deployment: DeployAppProd
+        displayName: Deploy application to prod
+        dependsOn: DeployInfraProd
         environment: prod
         strategy:
           runOnce:
@@ -128,7 +237,6 @@ stages:
               steps:
                 - download: current
                   artifact: $(ArtifactName)
-
                 - task: AzureWebApp@1
                   displayName: Deploy to Azure Web App (prod)
                   inputs:
@@ -137,6 +245,3 @@ stages:
                     appName: $(ProdWebAppName)
                     package: $(Pipeline.Workspace)/$(ArtifactName)/$(ApiZipName)
                     deploymentMethod: zipDeploy
-
-
-

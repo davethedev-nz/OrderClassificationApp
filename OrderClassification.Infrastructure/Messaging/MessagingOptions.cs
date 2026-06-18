@@ -29,7 +29,7 @@ public sealed class ServiceBusOptions
 public sealed class OutboxOptions
 {
     public bool Enabled { get; set; } = true;
-    public int DispatchIntervalMilliseconds { get; set; } = 250;
+    public int DispatchIntervalMilliseconds { get; set; } = 5000;
     public int BatchSize { get; set; } = 25;
 }
 

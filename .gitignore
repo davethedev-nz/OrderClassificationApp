@@ -50,4 +50,5 @@ docs/
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.*
+tfplan.*
 

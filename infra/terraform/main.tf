@@ -27,6 +27,15 @@ resource "azurerm_servicebus_subscription" "classification_read_model" {
   max_delivery_count = 10
 }
 
+resource "azurerm_servicebus_namespace_authorization_rule" "app" {
+  name         = "app-access"
+  namespace_id = azurerm_servicebus_namespace.main.id
+
+  listen = true
+  send   = true
+  manage = false
+}
+
 resource "azurerm_key_vault" "main" {
   name                       = "kv-${local.resource_prefix}1"
   location                   = azurerm_resource_group.main.location
@@ -116,14 +125,14 @@ resource "azurerm_key_vault_access_policy" "web_app" {
 
 resource "azurerm_key_vault_secret" "orderclassification_connection_string" {
   name         = "OrderClassification--ConnectionString"
-  value        = "Data Source=/home/site/wwwroot/orderclassification.db"
+  value        = "Data Source=dave was here"
   key_vault_id = azurerm_key_vault.main.id
   depends_on   = [azurerm_key_vault_access_policy.current_user]
 }
 
 resource "azurerm_key_vault_secret" "servicebus_connection_string" {
   name         = "OrderClassification--ServiceBusConnectionString"
-  value        = "Endpoint=sb://TODO-replace/;SharedAccessKeyName=TODO;SharedAccessKey=TODO"
+  value        = azurerm_servicebus_namespace_authorization_rule.app.primary_connection_string
   key_vault_id = azurerm_key_vault.main.id
   depends_on   = [azurerm_key_vault_access_policy.current_user]
 }

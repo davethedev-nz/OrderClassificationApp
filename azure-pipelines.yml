@@ -2,13 +2,13 @@ trigger:
   branches:
     include:
       - main
-      - feature/dotnet10-cram
+      - develop
 
 pr:
   branches:
     include:
       - main
-      - feature/dotnet10-cram
+      - develop
 
 pool:
   name: $(AgentPoolName)

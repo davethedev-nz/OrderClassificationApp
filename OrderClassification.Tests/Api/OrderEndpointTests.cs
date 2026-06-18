@@ -123,13 +123,15 @@ public class OrderEndpointTests(SqliteWebApplicationFactory factory)
         InMemoryEventPublisher.ClearPublishedEvents();
         await AuthenticateAsync();
 
-        var createResponse = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = "DAY5-001" });
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var referenceNumber = $"DAY5-{uniqueSuffix}";
+        var idempotencyKey = $"classify-day5-{uniqueSuffix}";
+
+        var createResponse = await _client.PostAsJsonAsync("/orders", new { ReferenceNumber = referenceNumber });
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var created = await createResponse.Content.ReadFromJsonAsync<CreatedOrderResponse>();
         Assert.NotNull(created);
-
-        const string idempotencyKey = "classify-day5-001";
         var classifyResponse = await _client.PatchAsJsonAsync("/orders/classify", new
         {
             Id = created.Id,

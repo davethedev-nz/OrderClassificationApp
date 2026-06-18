@@ -89,43 +89,35 @@ stages:
       - job: Terraform_Validate_Plan
         displayName: Terraform validate and plan
         steps:
-          - task: TerraformInstaller@0
-            displayName: Install Terraform
+          - task: AzureCLI@2
+            displayName: Terraform init, validate, and plan
             inputs:
-              terraformVersion: $(TerraformVersion)
-          - task: TerraformTaskV4@4
-            displayName: Terraform init
-            inputs:
-              provider: azurerm
-              command: init
-              workingDirectory: $(TerraformWorkingDir)
-              backendServiceArm: $(AzureServiceConnection)
-              backendAzureRmResourceGroupName: rg-terraform
-              backendAzureRmStorageAccountName: terraform
-              backendAzureRmContainerName: tfstate
-              backendAzureRmKey: orderclassification.tfstate
-          - task: TerraformTaskV4@4
-            displayName: Terraform validate
-            inputs:
-              provider: azurerm
-              command: validate
-              workingDirectory: $(TerraformWorkingDir)
-          - task: TerraformTaskV4@4
-            displayName: Terraform plan (dev)
-            inputs:
-              provider: azurerm
-              command: plan
-              workingDirectory: $(TerraformWorkingDir)
-              commandOptions: -var="environment=dev" -out=$(Build.ArtifactStagingDirectory)/tfplan-dev
-              environmentServiceNameAzureRM: $(AzureServiceConnection)
-          - task: TerraformTaskV4@4
-            displayName: Terraform plan (prod)
-            inputs:
-              provider: azurerm
-              command: plan
-              workingDirectory: $(TerraformWorkingDir)
-              commandOptions: -var="environment=prod" -out=$(Build.ArtifactStagingDirectory)/tfplan-prod
-              environmentServiceNameAzureRM: $(AzureServiceConnection)
+              azureSubscription: $(AzureServiceConnection)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                & "$(Build.SourcesDirectory)/scripts/terraform/Invoke-Terraform.ps1" `
+                  -Operation Plan `
+                  -Environment dev `
+                  -WorkingDir '$(TerraformWorkingDir)' `
+                  -TerraformVersion '$(TerraformVersion)' `
+                  -BackendResourceGroupName 'rg-terraform' `
+                  -BackendStorageAccountName 'terraform' `
+                  -BackendContainerName 'tfstate' `
+                  -BackendKey 'orderclassification.tfstate' `
+                  -PlanFile '$(Build.ArtifactStagingDirectory)/tfplan-dev'
+
+                & "$(Build.SourcesDirectory)/scripts/terraform/Invoke-Terraform.ps1" `
+                  -Operation Plan `
+                  -Environment prod `
+                  -WorkingDir '$(TerraformWorkingDir)' `
+                  -TerraformVersion '$(TerraformVersion)' `
+                  -BackendResourceGroupName 'rg-terraform' `
+                  -BackendStorageAccountName 'terraform' `
+                  -BackendContainerName 'tfstate' `
+                  -BackendKey 'orderclassification.tfstate' `
+                  -PlanFile '$(Build.ArtifactStagingDirectory)/tfplan-prod'
           - task: PublishPipelineArtifact@1
             displayName: Upload Terraform plans
             inputs:
@@ -148,29 +140,24 @@ stages:
               steps:
                 - download: current
                   artifact: $(TerraformArtifact)
-                - task: TerraformInstaller@0
-                  displayName: Install Terraform
+                - task: AzureCLI@2
+                  displayName: Apply Terraform plan to dev
                   inputs:
-                    terraformVersion: $(TerraformVersion)
-                - task: TerraformTaskV4@4
-                  displayName: Terraform init
-                  inputs:
-                    provider: azurerm
-                    command: init
-                    workingDirectory: $(TerraformWorkingDir)
-                    backendServiceArm: $(AzureServiceConnection)
-                    backendAzureRmResourceGroupName: rg-terraform
-                    backendAzureRmStorageAccountName: terraform
-                    backendAzureRmContainerName: tfstate
-                    backendAzureRmKey: orderclassification.tfstate
-                - task: TerraformTaskV4@4
-                  displayName: Terraform apply (dev)
-                  inputs:
-                    provider: azurerm
-                    command: apply
-                    workingDirectory: $(TerraformWorkingDir)
-                    commandOptions: $(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-dev
-                    environmentServiceNameAzureRM: $(AzureServiceConnection)
+                    azureSubscription: $(AzureServiceConnection)
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      & "$(Build.SourcesDirectory)/scripts/terraform/Invoke-Terraform.ps1" `
+                        -Operation Apply `
+                        -Environment dev `
+                        -WorkingDir '$(TerraformWorkingDir)' `
+                        -TerraformVersion '$(TerraformVersion)' `
+                        -BackendResourceGroupName 'rg-terraform' `
+                        -BackendStorageAccountName 'terraform' `
+                        -BackendContainerName 'tfstate' `
+                        -BackendKey 'orderclassification.tfstate' `
+                        -PlanFile '$(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-dev'
       - deployment: DeployAppDev
         displayName: Deploy application to dev
         dependsOn: DeployInfraDev
@@ -205,29 +192,24 @@ stages:
               steps:
                 - download: current
                   artifact: $(TerraformArtifact)
-                - task: TerraformInstaller@0
-                  displayName: Install Terraform
+                - task: AzureCLI@2
+                  displayName: Apply Terraform plan to prod
                   inputs:
-                    terraformVersion: $(TerraformVersion)
-                - task: TerraformTaskV4@4
-                  displayName: Terraform init
-                  inputs:
-                    provider: azurerm
-                    command: init
-                    workingDirectory: $(TerraformWorkingDir)
-                    backendServiceArm: $(AzureServiceConnection)
-                    backendAzureRmResourceGroupName: rg-terraform
-                    backendAzureRmStorageAccountName: terraform
-                    backendAzureRmContainerName: tfstate
-                    backendAzureRmKey: orderclassification.tfstate
-                - task: TerraformTaskV4@4
-                  displayName: Terraform apply (prod)
-                  inputs:
-                    provider: azurerm
-                    command: apply
-                    workingDirectory: $(TerraformWorkingDir)
-                    commandOptions: $(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-prod
-                    environmentServiceNameAzureRM: $(AzureServiceConnection)
+                    azureSubscription: $(AzureServiceConnection)
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      & "$(Build.SourcesDirectory)/scripts/terraform/Invoke-Terraform.ps1" `
+                        -Operation Apply `
+                        -Environment prod `
+                        -WorkingDir '$(TerraformWorkingDir)' `
+                        -TerraformVersion '$(TerraformVersion)' `
+                        -BackendResourceGroupName 'rg-terraform' `
+                        -BackendStorageAccountName 'terraform' `
+                        -BackendContainerName 'tfstate' `
+                        -BackendKey 'orderclassification.tfstate' `
+                        -PlanFile '$(Pipeline.Workspace)/$(TerraformArtifact)/tfplan-prod'
       - deployment: DeployAppProd
         displayName: Deploy application to prod
         dependsOn: DeployInfraProd

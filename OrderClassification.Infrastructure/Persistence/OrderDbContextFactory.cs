@@ -14,7 +14,7 @@ public sealed class OrderDbContextFactory : IDesignTimeDbContextFactory<OrderDbC
     public OrderDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<OrderDbContext>();
-        optionsBuilder.UseSqlite("Data Source=orderclassification.db");
+        optionsBuilder.UseSqlServer("Server=localhost;Database=orderclassification;Trusted_Connection=True;Encrypt=False;");
 
         return new OrderDbContext(optionsBuilder.Options);
     }

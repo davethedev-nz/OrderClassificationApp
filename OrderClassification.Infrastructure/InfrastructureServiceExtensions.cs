@@ -27,7 +27,7 @@ public static class InfrastructureServiceExtensions
             ?? "Data Source=orderclassification.db";
 
         services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
-        services.AddDbContext<OrderDbContext>(options => options.UseSqlite(connectionString));
+        services.AddDbContext<OrderDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IOrderRepository, EfOrderRepository>();
         services.AddScoped<IOutboxWriter, EfOutboxWriter>();
         

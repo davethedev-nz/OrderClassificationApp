@@ -125,7 +125,7 @@ resource "azurerm_key_vault_access_policy" "web_app" {
 
 resource "azurerm_key_vault_secret" "orderclassification_connection_string" {
   name         = "OrderClassification--ConnectionString"
-  value        = "Data Source=/home/site/orderclassification.db"
+  value        = "Server=tcp:${azurerm_mssql_server.main.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.main.name};Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
   key_vault_id = azurerm_key_vault.main.id
   depends_on   = [azurerm_key_vault_access_policy.current_user]
 }
@@ -137,5 +137,41 @@ resource "azurerm_key_vault_secret" "servicebus_connection_string" {
   depends_on   = [azurerm_key_vault_access_policy.current_user]
 }
 
+resource "azurerm_user_assigned_identity" "sql_server_identity" {
+  name                = "id-sql-${var.project_name}-${var.environment}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+}
+resource "azurerm_mssql_server" "main" {
+    name                         = "sql-${local.resource_prefix}"
+    resource_group_name          = azurerm_resource_group.main.name
+    location                     = azurerm_resource_group.main.location
+    version                      = "12.0"
+    administrator_login          = var.sql_admin_username
+    administrator_login_password = var.sql_admin_password
+    tags                         = var.tags
+  
+    identity {
+      type         = "UserAssigned"
+      identity_ids = [azurerm_user_assigned_identity.sql_server_identity.id]
+    }
 
+    primary_user_assigned_identity_id = azurerm_user_assigned_identity.sql_server_identity.id
+
+    azuread_administrator {
+      login_username              = var.entra_admin_login_name
+      object_id                   = var.entra_admin_object_id
+      azuread_authentication_only = true
+    }
+}
+
+resource "azurerm_mssql_database" "main" {
+  name      = "sqldb-${var.project_name}-${var.environment}"
+  server_id = azurerm_mssql_server.main.id
+  sku_name  = "Basic"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
 

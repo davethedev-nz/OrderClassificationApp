@@ -38,3 +38,23 @@ variable "servicebus_subscription_name" {
   default     = "classification-read-model"
 }
 
+variable "sql_admin_username" {
+  type    = string
+  default = "sqladminuser"
+}
+
+variable "sql_admin_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "entra_admin_login_name" {
+  type        = string
+  description = "Name of the Entra user or group that becomes SQL admin."
+}
+
+variable "entra_admin_object_id" {
+  type        = string
+  description = "Object ID of the Entra user or group that becomes SQL admin."
+}
+

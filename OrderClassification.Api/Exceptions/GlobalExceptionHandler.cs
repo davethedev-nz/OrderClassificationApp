@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +25,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         {
             ArgumentException => (StatusCodes.Status400BadRequest, "Validation or argument error"),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Invalid operation"),
-            DbUpdateException dbUpdateException when dbUpdateException.InnerException is SqliteException sqliteException && sqliteException.SqliteErrorCode == 19
+            DbUpdateException dbUpdateException when IsUniqueConstraintViolation(dbUpdateException)
                 => (StatusCodes.Status409Conflict, "Conflict while saving changes"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
         };
@@ -51,6 +51,21 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
         return true;
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+    {
+        if (exception.InnerException is SqlException sqlException)
+        {
+            return sqlException.Number is 2601 or 2627;
+        }
+
+        if (exception.InnerException is not null && exception.InnerException.GetType().Name == "SqliteException")
+        {
+            return exception.InnerException.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 }
 

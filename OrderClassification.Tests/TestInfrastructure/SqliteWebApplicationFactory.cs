@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderClassification.Infrastructure.Persistence;
@@ -50,7 +51,10 @@ public sealed class SqliteWebApplicationFactory : WebApplicationFactory<Program>
     private static void RemoveExistingDbContextRegistrations(IServiceCollection services)
     {
         var descriptors = services
-            .Where(d => d.ServiceType == typeof(DbContextOptions<OrderDbContext>) || d.ServiceType == typeof(OrderDbContext))
+            .Where(d =>
+                d.ServiceType == typeof(DbContextOptions<OrderDbContext>) ||
+                d.ServiceType == typeof(OrderDbContext) ||
+                d.ServiceType == typeof(IDbContextOptionsConfiguration<OrderDbContext>))
             .ToList();
 
         foreach (var descriptor in descriptors)

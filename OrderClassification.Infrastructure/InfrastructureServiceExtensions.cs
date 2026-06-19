@@ -2,7 +2,6 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using OrderClassification.Application.Messaging;
 using OrderClassification.Domain.Orders;
 using OrderClassification.Infrastructure.Messaging;
@@ -23,8 +22,11 @@ public static class InfrastructureServiceExtensions
         IConfiguration configuration)
     {
         var messagingOptions = configuration.GetSection(MessagingOptions.SectionName).Get<MessagingOptions>() ?? new MessagingOptions();
-        var connectionString = configuration.GetConnectionString("OrderClassification")
-            ?? "Data Source=orderclassification.db";
+        var connectionString = configuration.GetConnectionString("OrderClassification");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Connection string 'OrderClassification' is required and must target SQL Server.");
+        }
 
         services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
         services.AddDbContext<OrderDbContext>(options => options.UseSqlServer(connectionString));

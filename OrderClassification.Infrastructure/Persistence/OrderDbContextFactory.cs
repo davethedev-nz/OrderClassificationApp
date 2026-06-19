@@ -13,8 +13,13 @@ public sealed class OrderDbContextFactory : IDesignTimeDbContextFactory<OrderDbC
 {
     public OrderDbContext CreateDbContext(string[] args)
     {
+        var fromEnvironment = Environment.GetEnvironmentVariable("ConnectionStrings__OrderClassification");
+        var connectionString = string.IsNullOrWhiteSpace(fromEnvironment)
+            ? "Server=localhost;Database=orderclassification;Trusted_Connection=True;Encrypt=False;"
+            : fromEnvironment;
+
         var optionsBuilder = new DbContextOptionsBuilder<OrderDbContext>();
-        optionsBuilder.UseSqlServer("Server=localhost;Database=orderclassification;Trusted_Connection=True;Encrypt=False;");
+        optionsBuilder.UseSqlServer(connectionString);
 
         return new OrderDbContext(optionsBuilder.Options);
     }

@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +39,10 @@ public sealed class SqliteWebApplicationFactory : WebApplicationFactory<Program>
             _connection = new SqliteConnection("Data Source=:memory:");
             _connection.Open();
 
-            services.AddDbContext<OrderDbContext>(options => options.UseSqlite(_connection));
+            services.AddDbContext<OrderDbContext>(options =>
+                options
+                    .UseSqlite(_connection)
+                    .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
         });
     }
 
